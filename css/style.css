@@ -1,0 +1,611 @@
+/* ==========================================================
+ * style.css — 스마트 내차 찾기 (밝은 공공 서비스 테마)
+ * 모든 색상·간격·글씨 크기는 :root 변수로 관리
+ * 대비: 주요 텍스트 조합 모두 WCAG 2.1 AA(4.5:1) 이상
+ *   - #1A2433 / #FFFFFF ≈ 15.6:1     - #4A5568 / #FFFFFF ≈ 7.5:1
+ *   - #FFFFFF / #0B5CAD ≈ 6.7:1      - #0B5CAD / #E8F1FB ≈ 5.8:1
+ *   - #FFFFFF / #1E7B3A ≈ 5.3:1      - #FFFFFF / #B42318 ≈ 6.6:1
+ *   - #7A4100 / #FFF4E0 ≈ 7.6:1
+ * ========================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* 색상 */
+  --c-bg: #F5F7FA;
+  --c-surface: #FFFFFF;
+  --c-primary: #0B5CAD;
+  --c-primary-dark: #084886;
+  --c-primary-weak: #E8F1FB;
+  --c-text: #1A2433;
+  --c-text-muted: #4A5568;
+  --c-border: #D5DCE5;
+  --c-border-strong: #8A97A8;
+  --c-success: #1E7B3A;
+  --c-success-weak: #E7F4EA;
+  --c-danger: #B42318;
+  --c-danger-weak: #FDECEA;
+  --c-warn-text: #7A4100;
+  --c-warn-bg: #FFF4E0;
+  --c-accent: #C2410C;          /* 지도: 현재 단계 강조 */
+  --c-focus: #0B5CAD;
+
+  /* 지도 색 */
+  --map-parking: #EEF2F6;
+  --map-zone: #FFFFFF;
+  --map-road: #C9D1DB;
+  --map-walk: #60A5FA;
+  --c-route: #6D28D9;          /* 안내 경로 (보라) — 파란 보행로와 겹치지 않게 */
+  --c-route-active: #EA580C;   /* 지금 단계 (주황) */
+  --c-route-walked: #6B7280;   /* 지나온 길 (회색) */
+  --map-walk-area: #DCEBFA;
+  --map-terminal: #E8F1FB;
+
+  /* 글씨 크기 (글씨 크게 토글이 --fs-scale 만 바꿈) */
+  --fs-scale: 1;
+  --fs-body: calc(18px * var(--fs-scale));
+  --fs-small: calc(18px * var(--fs-scale));
+  --fs-h2: calc(24px * var(--fs-scale));
+  --fs-h1: calc(28px * var(--fs-scale));
+  --fs-key: calc(28px * var(--fs-scale));      /* 핵심 안내 */
+  --fs-plate: calc(32px * var(--fs-scale));    /* 차량 번호 */
+  --lh: 1.55;
+
+  /* 간격 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* 기타 */
+  --touch: 56px;           /* 최소 터치 영역 */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --container: 1440px;
+}
+
+html[data-font="large"] { --fs-scale: 1.2; }
+html[data-font="xlarge"] { --fs-scale: 1.4; }
+
+/* ---------- 기본 ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
+  font-size: var(--fs-body);
+  line-height: var(--lh);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-text-size-adjust: 100%;
+}
+
+[hidden] { display: none !important; }
+
+h1, h2, h3, p { margin: 0; }
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding-inline: var(--sp-4);
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: var(--sp-4); top: -100px;
+  background: var(--c-primary); color: #fff; padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm); z-index: 10; font-weight: 700;
+}
+.skip-link:focus { top: var(--sp-2); }
+
+/* 키보드 포커스 표시 */
+:focus-visible {
+  outline: 3px solid var(--c-focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.icon { flex: none; }
+
+/* ---------- 헤더 ---------- */
+.site-header {
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.header-inner {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--sp-3); padding-block: var(--sp-3);
+}
+.brand { display: flex; align-items: center; gap: var(--sp-3); }
+.brand-text { display: flex; flex-direction: column; }
+.brand-name { font-size: var(--fs-h2); font-weight: 800; color: var(--c-text); line-height: 1.2; }
+.terminal-badge {
+  align-self: flex-start; margin-top: var(--sp-1);
+  background: var(--c-primary-weak); color: var(--c-primary);
+  font-weight: 700; font-size: var(--fs-small); padding: 0 var(--sp-2); border-radius: 6px;
+}
+.header-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.clock { font-size: var(--fs-h2); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.font-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.font-toggle-label { font-weight: 700; color: var(--c-text-muted); }
+.font-toggle button {
+  min-height: var(--touch); min-width: var(--touch); padding: 0 var(--sp-3);
+  font: inherit; font-weight: 700; color: var(--c-primary);
+  background: var(--c-surface); border: 2px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer;
+}
+.font-toggle button[aria-pressed="true"] { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+
+/* ---------- 사용자/관리자 탭 ---------- */
+.view-tabs { display: flex; gap: var(--sp-3); padding-top: var(--sp-4); }
+.view-tabs [role="tab"] {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  min-height: var(--touch); padding: 0 var(--sp-4);
+  font: inherit; font-weight: 700; color: var(--c-text-muted);
+  background: transparent; border: 0; border-bottom: 4px solid transparent; cursor: pointer;
+}
+.view-tabs [role="tab"][aria-selected="true"] { color: var(--c-primary); border-bottom-color: var(--c-primary); }
+
+/* ---------- 진행 단계 ---------- */
+main { padding-block: var(--sp-4) var(--sp-6); }
+main:focus { outline: none; }
+
+.stepper {
+  list-style: none; margin: 0 0 var(--sp-4); padding: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2);
+}
+.stepper li {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-1);
+  text-align: center; color: var(--c-text-muted); font-weight: 700; font-size: var(--fs-small);
+  padding-top: var(--sp-2); border-top: 4px solid var(--c-border);
+}
+.step-num {
+  display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--c-border-strong); background: var(--c-surface); color: var(--c-text-muted);
+}
+.stepper li.is-done { border-top-color: var(--c-primary); color: var(--c-text); }
+.stepper li.is-done .step-num { background: var(--c-primary-weak); border-color: var(--c-primary); color: var(--c-primary); }
+.stepper li.is-current { border-top-color: var(--c-primary); color: var(--c-primary); }
+.stepper li.is-current .step-num { background: var(--c-primary); border-color: var(--c-primary); color: #fff; }
+
+/* ---------- 2단 레이아웃 ---------- */
+.layout { display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 1fr); }
+
+.card {
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: var(--sp-5) var(--sp-4); min-width: 0;
+}
+.guide-card { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+@media (min-width: 1024px) {
+  .layout { grid-template-columns: minmax(380px, 480px) minmax(0, 1fr); align-items: start; }
+  .map-card { position: sticky; top: var(--sp-4); }
+  .card { padding: var(--sp-5); }
+}
+
+/* ---------- 글자 스타일 ---------- */
+.title-lg { font-size: var(--fs-h1); font-weight: 800; line-height: 1.3; }
+.title-lg:focus { outline: none; }
+.title-md { font-size: var(--fs-h2); font-weight: 800; line-height: 1.3; }
+.lead { font-size: var(--fs-body); }
+.muted { color: var(--c-text-muted); font-size: var(--fs-small); }
+.eyebrow { color: var(--c-text-muted); font-weight: 700; font-size: var(--fs-small); }
+.plate-big, .plate-masked {
+  font-size: var(--fs-plate); font-weight: 800; letter-spacing: 0.02em; line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.door-big { font-size: var(--fs-key); font-weight: 800; color: var(--c-primary); line-height: 1.25; }
+.field-label { display: block; font-weight: 700; margin-bottom: var(--sp-2); }
+.plain-list { margin: 0; padding-left: 1.2em; display: grid; gap: var(--sp-2); }
+
+/* ---------- 버튼 ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--touch); min-width: var(--touch); padding: var(--sp-2) var(--sp-4);
+  font: inherit; font-weight: 700; text-decoration: none; text-align: center;
+  border-radius: var(--radius-sm); border: 2px solid transparent; cursor: pointer;
+}
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--c-primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--c-primary-dark); }
+.btn-secondary { background: var(--c-primary-weak); color: var(--c-primary); }
+.btn-outline { background: var(--c-surface); color: var(--c-primary); border-color: var(--c-primary); }
+.btn-block { width: 100%; }
+.btn-xl { min-height: 64px; font-size: var(--fs-h2); }
+.btn-tool { background: var(--c-surface); color: var(--c-primary); border-color: var(--c-border); padding-inline: var(--sp-3); }
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.btn-row > .btn { flex: 1 1 140px; }
+
+/* ---------- 입력 ---------- */
+.search-form { display: grid; gap: var(--sp-3); }
+.input-xl, .input-lg {
+  width: 100%; min-height: var(--touch); padding: var(--sp-2) var(--sp-4);
+  font: inherit; color: var(--c-text); background: var(--c-surface);
+  border: 2px solid var(--c-border-strong); border-radius: var(--radius-sm);
+}
+.input-xl { min-height: 72px; font-size: var(--fs-plate); font-weight: 800; letter-spacing: 0.3em; text-align: center; }
+.input-xl::placeholder, .input-lg::placeholder { color: #6B7686; letter-spacing: normal; font-weight: 400; }
+.input-xl:disabled { background: var(--c-bg); }
+.form-msg { color: var(--c-danger); font-weight: 700; min-height: 1em; }
+.form-msg:empty { display: none; }
+
+/* ---------- 선택 버튼 (검증 조건, 현재 위치) ---------- */
+.filter-group { border: 0; margin: 0; padding: 0; display: grid; gap: var(--sp-3); min-width: 0; }
+.filter-group legend { font-weight: 800; font-size: var(--fs-body); margin-bottom: var(--sp-3); padding: 0; }
+.filter-group legend small { font-weight: 400; color: var(--c-text-muted); font-size: var(--fs-small); }
+.choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 128px), 1fr)); gap: var(--sp-3); }
+.choice {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-2); flex-wrap: wrap;
+  min-height: var(--touch); padding: var(--sp-2) var(--sp-3);
+  font: inherit; font-weight: 700; color: var(--c-text);
+  background: var(--c-surface); border: 2px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer;
+}
+.choice small { font-weight: 400; color: var(--c-text-muted); font-size: var(--fs-small); }
+.choice[aria-pressed="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); color: var(--c-primary); }
+.choice[aria-pressed="true"] small { color: var(--c-primary); }
+.choice[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--c-border-strong); }
+
+.count-box {
+  background: var(--c-primary-weak); color: var(--c-primary); border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-4); font-weight: 700;
+}
+.count-box strong { font-size: var(--fs-key); }
+
+/* ---------- 안내 박스 ---------- */
+.notice {
+  display: flex; align-items: flex-start; gap: var(--sp-2);
+  background: var(--c-primary-weak); color: var(--c-text); border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-4);
+}
+.notice-warn { background: var(--c-warn-bg); color: var(--c-warn-text); }
+.notice-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-3); }
+#fee-box.notice { display: block; }
+#fee-box p + p { margin-top: var(--sp-2); }
+.fee-amount strong { font-size: var(--fs-key); color: var(--c-primary); }
+
+/* ---------- 차량 카드 ---------- */
+.vehicle-card {
+  display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: var(--sp-4);
+  border: 2px solid var(--c-border); border-radius: var(--radius); padding: var(--sp-4); margin-top: var(--sp-3);
+}
+@media (max-width: 420px) {
+  .vehicle-card { grid-template-columns: minmax(0, 1fr); }
+  .vehicle-card .thumb { aspect-ratio: auto; height: 104px; }
+}
+.thumb {
+  position: relative; display: grid; place-items: center; align-content: center; gap: var(--sp-1);
+  aspect-ratio: 1; max-width: 100%; border-radius: var(--radius-sm);
+  background: var(--c-bg); border: 1px solid var(--c-border); color: var(--c-text-muted);
+}
+.thumb .icon { fill: var(--car-color); stroke: var(--c-text); }
+.thumb-label { font-size: var(--fs-small); color: var(--c-text-muted); text-align: center; line-height: 1.2; }
+.vehicle-info { display: grid; gap: var(--sp-3); min-width: 0; }
+.info-list { margin: 0; display: grid; gap: var(--sp-2); }
+.info-list div { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.info-list dt { color: var(--c-text-muted); font-weight: 700; min-width: 5.5em; }
+.info-list dd { margin: 0; font-weight: 700; }
+
+/* ---------- 경로 화면 ---------- */
+.vehicle-summary {
+  background: var(--c-bg); border-radius: var(--radius-sm); padding: var(--sp-4); display: grid; gap: var(--sp-1);
+}
+.vehicle-summary p:last-child { display: flex; align-items: center; gap: var(--sp-2); font-weight: 700; }
+
+.preset-grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
+.preset {
+  display: grid; justify-items: center; gap: var(--sp-1); text-align: center;
+  min-height: 96px; padding: var(--sp-3); font: inherit; color: var(--c-text);
+  background: var(--c-surface); border: 2px solid var(--c-border); border-radius: var(--radius); cursor: pointer;
+}
+.preset .icon { color: var(--c-primary); }
+.preset-label { font-weight: 800; font-size: var(--fs-body); }
+.preset small { color: var(--c-text-muted); font-size: var(--fs-small); line-height: 1.35; }
+.preset[aria-pressed="true"] { border-color: var(--c-primary); background: var(--c-primary-weak); box-shadow: inset 0 0 0 2px var(--c-primary); }
+
+.recommend-card {
+  border: 2px solid var(--c-primary); border-radius: var(--radius); padding: var(--sp-4); display: grid; gap: var(--sp-3);
+}
+.reason { display: flex; gap: var(--sp-2); align-items: flex-start; font-weight: 700; }
+.reason .icon { color: var(--c-success); }
+.stat-row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr)); gap: var(--sp-2); }
+.stat-row li { background: var(--c-bg); border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3); display: grid; }
+.stat-row span { color: var(--c-text-muted); font-size: var(--fs-small); }
+.stat-row strong { font-size: var(--fs-body); }
+.compare { border-top: 1px solid var(--c-border); padding-top: var(--sp-3); display: grid; gap: var(--sp-2); }
+.compare-title { font-weight: 800; }
+.compare-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.compare-list li { display: grid; gap: 2px; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.compare-list li.is-current { border: 2px solid var(--c-primary); background: var(--c-primary-weak); }
+.compare-name { font-weight: 800; }
+.compare-name small { font-size: var(--fs-small); color: var(--c-primary); }
+.compare-detail { color: var(--c-text-muted); font-size: var(--fs-small); }
+.compare-list li.is-current .compare-detail { color: var(--c-text); }
+.compare-note { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--c-success); font-weight: 700; }
+.safety { display: flex; gap: var(--sp-2); align-items: flex-start; font-weight: 700; }
+.safety.ok { color: var(--c-success); }
+.safety.bad { color: var(--c-danger); }
+
+/* ---------- 단계 카드 ---------- */
+.step-card {
+  border: 2px solid var(--c-border); border-left: 8px solid var(--c-primary); border-radius: var(--radius);
+  padding: var(--sp-4); display: grid; gap: var(--sp-3); margin-bottom: var(--sp-3);
+}
+.step-card:focus { outline: none; }
+.step-card:focus-visible { outline: 3px solid var(--c-focus); }
+.step-card.is-caution { border-left-color: var(--c-accent); }
+.step-card.is-arrive { border-left-color: var(--c-success); }
+.step-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-2); }
+.step-badge { background: var(--c-primary); color: #fff; border-radius: 6px; padding: 0 var(--sp-2); font-weight: 800; }
+.step-meta { color: var(--c-text-muted); font-weight: 700; }
+.step-body { display: flex; align-items: center; gap: var(--sp-4); }
+.step-icon {
+  flex: none; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%;
+  background: var(--c-primary-weak); color: var(--c-primary);
+}
+.step-text { font-size: var(--fs-key); font-weight: 800; line-height: 1.35; }
+.step-caution { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--c-warn-text); background: var(--c-warn-bg); padding: var(--sp-2) var(--sp-3); border-radius: var(--radius-sm); font-weight: 700; }
+#step-speak { margin-top: var(--sp-3); }
+.step-overview { margin-top: var(--sp-3); }
+.step-overview summary { min-height: var(--touch); display: flex; align-items: center; font-weight: 700; color: var(--c-primary); cursor: pointer; }
+.step-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-2); }
+.step-jump {
+  width: 100%; min-height: var(--touch); text-align: left; padding: var(--sp-2) var(--sp-3);
+  font: inherit; color: var(--c-text); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-sm); cursor: pointer;
+}
+.step-jump[aria-current] { border: 2px solid var(--c-primary); background: var(--c-primary-weak); font-weight: 700; }
+
+/* ---------- 도착 화면 ---------- */
+.arrive-hero { display: flex; align-items: center; gap: var(--sp-3); }
+.arrive-icon { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--c-success-weak); color: var(--c-success); }
+.card-inner { background: var(--c-bg); border-radius: var(--radius-sm); padding: var(--sp-4); display: grid; gap: var(--sp-3); }
+
+/* ---------- 지도 ---------- */
+.map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.map-tools { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.map {
+  width: 100%; height: clamp(300px, 75vw, 560px);
+  border: 1px solid var(--c-border); border-radius: var(--radius-sm); background: var(--c-bg); overflow: hidden;
+}
+@media (min-width: 1024px) { .map { height: min(640px, calc(100vh - 300px)); min-height: 440px; } }
+.map-svg { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; }
+.map-svg.dragging { cursor: grabbing; }
+.map-hint { color: var(--c-text-muted); font-size: var(--fs-small); margin-top: var(--sp-2); }
+
+/* SVG 요소 스타일 */
+.parking-area { fill: var(--map-parking); stroke: var(--c-border); }
+.zone { fill: var(--map-zone); stroke: var(--c-border-strong); stroke-width: 1.5; }
+.road { fill: var(--map-road); }
+.road-line { stroke: #fff; stroke-width: 3; stroke-dasharray: 18 14; }
+.sidewalk-area { fill: var(--map-walk-area); }
+.terminal { fill: var(--map-terminal); stroke: var(--c-primary); stroke-width: 2; }
+.walkway { stroke: var(--map-walk); stroke-width: 5; stroke-linecap: round; opacity: 0.55; }
+.indoor-way { stroke: var(--c-primary); stroke-width: 2; stroke-dasharray: 4 6; opacity: 0.5; }
+.crosswalk { fill: url(#crosswalk-stripes); stroke: #4A5568; stroke-width: 1; }
+.cw-bg { fill: #4A5568; }
+.cw-stripe { fill: #FFFFFF; }
+.lbl-area, .lbl-road { font-size: 15px; fill: var(--c-text-muted); font-weight: 700; }
+.lbl-zone { font-size: 15px; font-weight: 800; fill: var(--c-text); pointer-events: none; }
+.aisle { fill: #E3E8EF; }
+.aisle-line { stroke: #FFFFFF; stroke-width: 1.5; stroke-dasharray: 8 6; }
+.stall { fill: #FFFFFF; stroke: #8A97A8; stroke-width: 0.8; }
+.stall-taken { fill: #D5DCE5; }
+.stall-mine { fill: #FDECEA; stroke: var(--c-danger); stroke-width: 2; }
+.lbl-stall { font-size: 6px; font-weight: 700; fill: var(--c-text); pointer-events: none; display: none; }
+.lbl-pillar { display: none; }
+.zoomed .lbl-stall, .zoomed .lbl-pillar { display: inline; }
+.zoomed .lbl-zone { display: none; }   /* 확대하면 구역 이름 대신 칸 번호 */
+.lbl-terminal { font-size: 22px; font-weight: 800; fill: var(--c-primary); }
+.lbl-floor { font-size: 13px; font-weight: 700; fill: var(--c-text-muted); }
+.door { stroke-width: 2; }
+.door-1F { fill: var(--c-primary); stroke: var(--c-primary); }
+.door-3F { fill: #fff; stroke: var(--c-primary); }
+.node-door .lbl-door { font-size: 14px; font-weight: 800; }
+.door-1F + .lbl-door { fill: #fff; }
+.door-3F + .lbl-door { fill: var(--c-primary); }
+.vertical { fill: #fff; stroke: var(--c-text-muted); stroke-width: 1.5; }
+.lbl-vertical { font-size: 13px; font-weight: 700; fill: var(--c-text); }
+.gate-in { fill: var(--c-success); }
+.gate-out { fill: var(--c-danger); }
+.lbl-gate { font-size: 14px; font-weight: 800; fill: #fff; }
+.pillar { fill: #1A2433; }
+.lbl-pillar { font-size: 7px; font-weight: 800; fill: var(--c-text); paint-order: stroke; stroke: #fff; stroke-width: 2px; }
+
+.route-casing { fill: none; stroke: #fff; stroke-width: 11px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.route-full { fill: none; stroke: var(--c-primary); stroke-width: 7px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.has-active .route-full, .has-active .route-casing { opacity: 0.3; }
+.route-step-casing { fill: none; stroke: #fff; stroke-width: 13px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.route-step { fill: none; stroke: var(--c-accent); stroke-width: 8px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.arrow-head { fill: var(--c-accent); }
+.moving-arrow { fill: #fff; stroke: var(--c-accent); stroke-width: 2; }
+.active-spot { fill: none; stroke: var(--c-accent); stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.door-highlight { fill: none; stroke: var(--c-accent); stroke-width: 4; stroke-dasharray: 6 4; }
+.pin { fill: var(--c-danger); stroke: #fff; stroke-width: 2.5; }
+.lbl-pin { font-size: 5px; font-weight: 800; fill: #fff; }
+.me-dot { fill: var(--c-primary); stroke: #fff; stroke-width: 4; }
+.me-pulse { fill: var(--c-primary); opacity: 0.3; transform-origin: center; transform-box: fill-box; animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse { from { transform: scale(0.6); opacity: 0.45; } to { transform: scale(1.6); opacity: 0; } }
+
+/* 실제 지도(Leaflet) 위 표시들 */
+.map .leaflet-container { font: inherit; }
+.leaflet-container { background: var(--c-bg); }
+.door-mark {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--c-primary); color: #fff; font-size: 13px; font-weight: 800; border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); transform: translate(-13px, -13px);
+}
+.gate-mark {
+  display: inline-block; padding: 2px 6px; border-radius: 10px; color: #fff; font-size: 12px; font-weight: 800;
+  border: 2px solid #fff; transform: translate(-50%, -50%); white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.gate-mark.gate-in { background: var(--c-success); }
+.gate-mark.gate-out { background: var(--c-danger); }
+.lot-label {
+  display: inline-block; transform: translate(-50%, -50%); padding: 2px 10px; border-radius: 8px;
+  background: #fff; color: var(--c-primary); border: 2px solid var(--c-primary); font-size: 18px; font-weight: 800;
+}
+.stall-num { display: inline-block; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: var(--c-text); }
+.car-pin {
+  position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50% 50% 50% 0;
+  background: var(--c-danger); border: 3px solid #fff; transform: translate(-22px, -50px) rotate(-45deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+.car-pin span { transform: rotate(45deg); color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.me { position: relative; display: block; width: 36px; height: 36px; transform: translate(-18px, -18px); }
+.me-dot { position: absolute; inset: 9px; border-radius: 50%; background: var(--c-primary); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--c-primary); }
+.me .me-pulse { position: absolute; inset: 0; border-radius: 50%; background: var(--c-primary); opacity: 0.3; animation: pulse 1.6s ease-out infinite; }
+.move-arrow {
+  display: block; width: 0; height: 0; transform-origin: 50% 50%;
+  border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 14px solid #fff;
+  filter: drop-shadow(0 0 1px var(--c-accent)) drop-shadow(0 0 1px var(--c-accent));
+  margin: -7px 0 0 -7px;
+}
+
+/* 범례 */
+.legend { list-style: none; margin: var(--sp-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.legend li { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-small); }
+.lg { display: inline-grid; place-items: center; width: 36px; height: 22px; border-radius: 4px; font-size: 12px; font-weight: 800; color: #fff; }
+.lg-in { background: var(--c-success); }
+.lg-out { background: var(--c-danger); }
+.lg-crosswalk { background: repeating-linear-gradient(90deg, #4A5568 0 5px, #fff 5px 10px); border: 1px solid #4A5568; }
+.lg-walk { height: 4px; background: var(--map-walk); border-radius: 2px; opacity: 0.7; }
+.lg-route { height: 8px; background: var(--c-route); border-radius: 4px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #CBD2DA; }
+.lg-active { height: 8px; background: var(--c-route-active); border-radius: 4px; }
+.lg-walked { height: 8px; background: var(--c-route-walked); border-radius: 4px; }
+.lg-me { width: 22px; border-radius: 50%; background: var(--c-primary); box-shadow: 0 0 0 5px rgba(11, 92, 173, 0.25); }
+.lg-pin { width: 20px; height: 26px; background: var(--c-danger); border-radius: 50% 50% 50% 0; transform: rotate(-45deg) scale(0.8); }
+
+/* ---------- 푸터 ---------- */
+.site-footer { border-top: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-muted); font-size: var(--fs-small); }
+.site-footer .container { padding-block: var(--sp-4) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px)); display: grid; gap: var(--sp-1); }
+
+/* ---------- 움직임 줄이기 설정 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .moving-arrow { display: none; }
+}
+
+/* ---------- 경로 화살표·내 위치 방향 ---------- */
+.chev {
+  display: block; width: 0; height: 0; margin: -5px 0 0 -4px; transform-origin: 4px 5px;
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 8px solid #fff;
+}
+.me-heading {
+  position: absolute; left: 50%; top: 50%; width: 0; height: 0; margin: -9px 0 0 -2px; transform-origin: 2px 9px;
+  border-top: 9px solid transparent; border-bottom: 9px solid transparent; border-left: 22px solid rgba(11, 92, 173, 0.55);
+}
+.me-dot { z-index: 1; }
+.map-recenter { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.is-picking, .is-picking .leaflet-interactive { cursor: crosshair; }
+
+/* ---------- 내비게이션 상단 표시 ---------- */
+.nav-hud {
+  display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-sm); background: var(--c-text); color: #fff;
+}
+.nav-step { display: flex; gap: var(--sp-2); align-items: flex-start; font-weight: 800; font-size: var(--fs-body); }
+.nav-progress { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.nav-progress span { display: block; height: 100%; background: #FDBA74; transition: width 0.3s; }
+.nav-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-small); }
+.nav-meta strong { font-size: var(--fs-h2); }
+
+/* ---------- 찾는 방법 선택 (차량 번호 / 주차칸 번호) ---------- */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+.seg-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--touch); padding: var(--sp-2); font: inherit; font-weight: 700; cursor: pointer;
+  color: var(--c-primary); background: var(--c-surface); border: 2px solid var(--c-border); border-radius: var(--radius-sm);
+}
+.seg-btn[aria-pressed="true"] { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+.input-plate { letter-spacing: 0.05em; }
+.register-cta { border-top: 1px solid var(--c-border); padding-top: var(--sp-4); display: grid; gap: var(--sp-3); }
+
+/* ---------- 내 차 등록 ---------- */
+.howto { border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 0 var(--sp-4); }
+.howto summary { min-height: var(--touch); display: flex; align-items: center; font-weight: 800; color: var(--c-primary); cursor: pointer; }
+.howto-list { margin: 0 0 var(--sp-4); padding-left: 1.3em; display: grid; gap: var(--sp-3); }
+.reg-form { display: grid; gap: var(--sp-4); }
+.field { display: grid; gap: var(--sp-2); }
+.field-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.field-row > .input-lg { flex: 1 1 180px; }
+.field-msg { min-height: 1em; font-weight: 700; color: var(--c-text-muted); }
+.field-msg:empty { display: none; }
+.field-msg.is-error { color: var(--c-danger); }
+.field-msg.is-ok { color: var(--c-success); }
+.consent { display: grid; gap: var(--sp-2); }
+.consent-btn .icon { opacity: 0.3; }
+.consent-btn[aria-pressed="true"] .icon { opacity: 1; }
+.my-cars { border-top: 1px solid var(--c-border); padding-top: var(--sp-4); display: grid; gap: var(--sp-3); }
+.my-car-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.my-car-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.my-car-list small { color: var(--c-text-muted); font-size: var(--fs-small); }
+.footer-links { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+/* ---------- 모바일 화면: 경로 안내 때 지도를 위에 고정 (내비게이션처럼) ---------- */
+html[data-device="mobile"] body[data-stage="3"] .layout { display: flex; flex-direction: column; }
+html[data-device="mobile"] body[data-stage="3"] .map-card {
+  order: -1; position: sticky; top: 0; z-index: 500; padding: var(--sp-2);
+  box-shadow: 0 4px 10px rgba(16, 24, 40, 0.12);
+}
+html[data-device="mobile"] body[data-stage="3"] .map { height: 40vh; min-height: 240px; }
+/* 모바일 경로 안내: 확대·축소는 두 손가락으로 → 버튼은 「전체 보기」「내 차로 이동」만 */
+html[data-device="mobile"] body[data-stage="3"] #zoom-in,
+html[data-device="mobile"] body[data-stage="3"] #zoom-out { display: none; }
+html[data-device="mobile"] body[data-stage="3"] .map-tools { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+html[data-device="mobile"] body[data-stage="3"] .map-tools .btn { min-height: var(--touch); padding-inline: var(--sp-2); }
+html[data-device="mobile"] body[data-stage="3"] .nav-step { font-size: var(--fs-body); }
+html[data-device="mobile"] body[data-stage="3"] .nav-step span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+html[data-device="mobile"] body[data-stage="3"] .nav-meta strong { font-size: var(--fs-body); }
+html[data-device="mobile"] body[data-stage="3"] .map-hint,
+html[data-device="mobile"] body[data-stage="3"] .legend,
+html[data-device="mobile"] body[data-stage="3"] #map-heading { display: none; }
+html[data-device="mobile"] body[data-stage="3"] .map-head { margin-bottom: var(--sp-2); }
+html[data-device="mobile"] body[data-stage="3"] .map-tools { gap: var(--sp-2); }
+html[data-device="mobile"] body[data-stage="3"] .nav-hud { margin-bottom: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
+/* ---------- 내 등록 차량 (항상 표시) ---------- */
+.my-cars-bar {
+  margin-bottom: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface); border: 2px solid var(--c-primary); border-radius: var(--radius);
+  display: grid; gap: var(--sp-3);
+}
+.my-cars-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.my-cars-title { margin: 0; display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-body); font-weight: 800; color: var(--c-primary); }
+.my-cars-title small { font-weight: 400; color: var(--c-text-muted); font-size: var(--fs-small); }
+.my-car-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.my-car-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.my-car-info { display: grid; }
+.my-car-info strong { font-size: var(--fs-h2); }
+.my-car-info small { color: var(--c-text-muted); font-size: var(--fs-small); }
+.my-car-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.my-car-actions.confirm { background: var(--c-danger-weak); border-radius: var(--radius-sm); padding: var(--sp-1) var(--sp-2); }
+.confirm-text { font-weight: 800; color: var(--c-danger); }
+.btn-danger { background: var(--c-danger); color: #fff; }
+.btn-danger-outline { background: var(--c-surface); color: var(--c-danger); border-color: var(--c-danger); }
+
+/* ---------- 셔틀·열차 운행 정보 ---------- */
+.transit-box { border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 0 var(--sp-4) var(--sp-2); }
+.transit-box summary { min-height: var(--touch); display: flex; align-items: center; gap: var(--sp-2); font-weight: 800; color: #0F766E; cursor: pointer; }
+.transit-status { list-style: none; margin: 0 0 var(--sp-2); padding: 0; display: grid; gap: var(--sp-2); }
+.transit-status li { display: flex; gap: var(--sp-2); align-items: flex-start; }
+.transit-status li.on .icon { color: #0F766E; }
+.transit-status li.off { color: var(--c-text-muted); }
+.transit-status small { font-size: var(--fs-small); color: var(--c-text-muted); }
+.stop-mark {
+  display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; border: 2px solid #fff;
+  color: #fff; transform: translate(-13px, -13px); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.stop-mark.bus { background: #0F766E; }
+.stop-mark.maglev { background: #A16207; }
+.lg-shuttle { height: 6px; background: repeating-linear-gradient(90deg, #0F766E 0 10px, transparent 10px 16px); }
+.lg-maglev { height: 6px; background: repeating-linear-gradient(90deg, #A16207 0 10px, transparent 10px 16px); }

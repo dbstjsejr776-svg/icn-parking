@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko" data-font="base">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>QR코드 만들기 · 스마트 내차 찾기</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .qr-page { padding-block: var(--sp-5); display: grid; gap: var(--sp-4); }
+    .qr-controls { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); align-items: end; }
+    .qr-controls label { display: grid; gap: var(--sp-1); font-weight: 700; }
+    .qr-controls select, .qr-controls input { min-height: var(--touch); font: inherit; padding: 0 var(--sp-3); border: 2px solid var(--c-border-strong); border-radius: var(--radius-sm); background: #fff; color: var(--c-text); width: 100%; }
+    .qr-grid { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+    .qr-label { border: 2px solid var(--c-text); border-radius: var(--radius-sm); padding: var(--sp-3); text-align: center; background: #fff; display: grid; gap: var(--sp-2); justify-items: center; break-inside: avoid; }
+    .qr-label .qr-box { width: 150px; height: 150px; }
+    .qr-label .qr-box img, .qr-label .qr-box canvas { width: 150px !important; height: 150px !important; }
+    .qr-title { font-size: 22px; font-weight: 800; line-height: 1.25; }
+    .qr-sub { font-size: 16px; color: var(--c-text-muted); }
+    .qr-url { font-size: 11px; color: var(--c-text-muted); word-break: break-all; }
+    .qr-label.door .qr-title { color: var(--c-primary); }
+    @media print {
+      .site-header, .no-print, .site-footer { display: none !important; }
+      body { background: #fff; }
+      .qr-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header no-print">
+    <div class="container header-inner">
+      <div class="brand">
+        <svg class="logo" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+          <rect width="44" height="44" rx="10" fill="#0B5CAD"/>
+          <path d="M15 33V11h8.5a7 7 0 010 14H15" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="31" cy="31" r="5" fill="#E8F1FB"/>
+        </svg>
+        <div class="brand-text">
+          <span class="brand-name">QR코드 만들기</span>
+          <span class="terminal-badge">관리자용 · 인쇄</span>
+        </div>
+      </div>
+      <a class="btn btn-secondary" href="index.html">서비스 화면으로</a>
+    </div>
+  </header>
+
+  <main class="container qr-page" id="main">
+    <section class="card no-print">
+      <h1 class="title-lg">QR코드 종류</h1>
+      <div class="seg" role="group" aria-label="QR코드 종류">
+        <button type="button" class="seg-btn" data-kind="stall" aria-pressed="true"><span>① 주차칸 QR (내 차 등록)</span></button>
+        <button type="button" class="seg-btn" data-kind="door" aria-pressed="false"><span>② 출입문 QR (내 차 찾기)</span></button>
+      </div>
+      <p class="lead" id="kind-desc"></p>
+
+      <div class="qr-controls">
+        <label class="span-all">QR이 연결할 사이트 주소
+          <input id="base-url" type="url" placeholder="https://내아이디.github.io/icn-parking/index.html">
+        </label>
+      </div>
+      <p class="muted">휴대폰으로 찍으려면 <strong>인터넷에 올린 주소(https)</strong>를 넣어야 해요. localhost 주소는 이 컴퓨터에서만 열려요.</p>
+
+      <div class="qr-controls" id="stall-controls">
+        <label>주차장 <select id="lot"></select></label>
+        <label>구역 <select id="section"></select></label>
+        <label>칸 번호 부터 <input id="from" type="number" min="1" value="1"></label>
+        <label>칸 번호 까지 <input id="to" type="number" min="1" value="12"></label>
+      </div>
+      <div class="qr-controls" id="door-controls" hidden>
+        <label>층 <select id="floor"><option value="all">1층·3층 모두</option><option value="1F">1층 입국장</option><option value="3F">3층 출국장</option></select></label>
+      </div>
+      <div class="btn-row" style="margin-top:var(--sp-3)">
+        <button type="button" class="btn btn-primary" id="make">QR 만들기</button>
+        <button type="button" class="btn btn-outline" id="print">인쇄하기</button>
+      </div>
+      <p class="muted" id="count"></p>
+    </section>
+
+    <section class="qr-grid" id="grid" aria-live="polite"></section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="js/router.js"></script>
+  <script>
+  /* ==========================================================
+   * QR코드 만들기
+   * ① 주차칸 QR : index.html?reg=P1-O-069  → 찍으면 그 칸으로 「내 차 등록」 화면이 열림
+   * ② 출입문 QR : index.html?from=D1F-03   → 찍으면 그 출입문에서 출발하는 「내 차 찾기」 화면이 열림
+   * 휴대폰·PC 화면은 열리는 기기에 맞춰 자동으로 바뀜
+   * ========================================================== */
+  const $ = (s) => document.querySelector(s);
+  let kind = 'stall';
+  const MAX = 120;   // 한 번에 만들 수 있는 최대 개수 (인쇄 1회 분량)
+
+  (async () => {
+    const parking = await (await fetch('data/parking.json', { cache: 'no-cache' })).json();
+    Router.build(parking);
+    const stalls = Object.values(Router.stalls);
+
+    // 기본 주소: 이 페이지 옆의 index.html
+    $('#base-url').value = location.href.replace(/qr\.html.*$/, 'index.html');
+
+    // 주차장·구역 선택지
+    const lots = [...new Set(stalls.map((s) => s.lot))];
+    $('#lot').innerHTML = lots.map((l) => `<option value="${l}">${l} 장기주차장</option>`).join('');
+    const fillSections = () => {
+      const secs = [...new Set(stalls.filter((s) => s.lot === $('#lot').value).map((s) => s.section))];
+      $('#section').innerHTML = secs.map((x) => {
+        const n = stalls.filter((s) => s.lot === $('#lot').value && s.section === x).length;
+        return `<option value="${x}">${x}구역 (${n}칸)</option>`;
+      }).join('');
+    };
+    $('#lot').addEventListener('change', fillSections);
+    fillSections();
+
+    const desc = {
+      stall: '주차칸 바닥·기둥에 붙이는 QR이에요. 이용객이 찍으면 그 칸 번호가 들어간 「내 차 등록」 화면이 열려요.',
+      door: '터미널 출입문에 붙이는 QR이에요. 이용객이 찍으면 그 출입문에서 출발하는 「내 차 찾기」 화면이 열려요 (차량 번호 또는 주차칸 번호로 검색).',
+    };
+    const setKind = (k) => {
+      kind = k;
+      document.querySelectorAll('[data-kind]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kind === k)));
+      $('#stall-controls').hidden = k !== 'stall';
+      $('#door-controls').hidden = k !== 'door';
+      $('#kind-desc').textContent = desc[k];
+      make();
+    };
+    document.querySelectorAll('[data-kind]').forEach((b) => b.addEventListener('click', () => setKind(b.dataset.kind)));
+
+    function label(url, title, sub, cls) {
+      const box = document.createElement('article');
+      box.className = 'qr-label ' + cls;
+      box.innerHTML = `<div class="qr-title">${title}</div><div class="qr-box" role="img" aria-label="${title} QR코드"></div><div class="qr-sub">${sub}</div><div class="qr-url">${url}</div>`;
+      $('#grid').appendChild(box);
+      new QRCode(box.querySelector('.qr-box'), { text: url, width: 300, height: 300, correctLevel: QRCode.CorrectLevel.M });
+    }
+
+    function make() {
+      const base = $('#base-url').value.trim() || 'index.html';
+      const sep = base.includes('?') ? '&' : '?';
+      $('#grid').innerHTML = '';
+      let list = [];
+      if (kind === 'stall') {
+        const from = Math.max(1, +$('#from').value || 1), to = Math.max(from, +$('#to').value || from);
+        list = stalls.filter((s) => s.lot === $('#lot').value && s.section === $('#section').value && s.number >= from && s.number <= to)
+          .map((s) => () => label(`${base}${sep}reg=${s.id}`, `${s.lot} · ${s.section}구역<br>${s.number}번 칸`, '찍으면 <strong>내 차 등록</strong>', 'stall'));
+      } else {
+        const fl = $('#floor').value;
+        list = parking.nodes.filter((n) => n.type === 'door' && (fl === 'all' || n.floor === fl))
+          .sort((a, b) => a.floor.localeCompare(b.floor) || a.doorNumber - b.doorNumber)
+          .map((n) => () => label(`${base}${sep}from=${n.id}`, `${Router.floorArea(n.floor)}<br>${n.doorNumber}번 출입문`, '찍으면 <strong>내 차 찾기</strong>', 'door'));
+      }
+      const shown = list.slice(0, MAX);
+      shown.forEach((f) => f());
+      $('#count').textContent = `${shown.length}개 만들었어요${list.length > MAX ? ` (최대 ${MAX}개 — 범위를 나눠서 만들어 주세요)` : ''}.`;
+    }
+
+    $('#make').addEventListener('click', make);
+    $('#print').addEventListener('click', () => window.print());
+    setKind('stall');
+  })();
+  </script>
+</body>
+</html>
