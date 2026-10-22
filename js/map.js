@@ -31,6 +31,8 @@ const MapView = (() => {
   let follow = true;                 // 내 위치 따라가기
   let picking = null;                // 칸 고르기 콜백
   let recenterBtn = null;
+  let tileLayer = null;
+  let tileProblem = null;            // (failed: boolean) => void  — 지도 이미지 로딩 결과 알림
   const STALL_ZOOM = 18;             // 이 확대 수준부터 주차칸 표시
   const LABEL_ZOOM = 20;             // 이 확대 수준부터 칸 번호 표시
 
@@ -50,12 +52,20 @@ const MapView = (() => {
       const Packed = L.TileLayer.extend({
         getTileUrl: (c) => T.tiles[`${c.z}/${c.x}/${c.y}`] || T.blank,
       });
-      new Packed('', { minZoom: T.minZoom, maxZoom: 21, maxNativeZoom: T.maxZoom, attribution }).addTo(map);
+      tileLayer = new Packed('', { minZoom: T.minZoom, maxZoom: 21, maxNativeZoom: T.maxZoom, attribution }).addTo(map);
       map.setMinZoom(T.minZoom);
       map.setMaxBounds(L.latLngBounds(T.bounds).pad(0.15));
     } else {
-      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, attribution }).addTo(map);
+      tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, attribution }).addTo(map);
     }
+    // 지도 이미지(타일) 로딩 실패 감지: 한 화면에서 여러 장이 실패하고 하나도 못 받으면 알림
+    let tileOk = 0, tileFail = 0;
+    tileLayer.on('loading', () => { tileOk = 0; tileFail = 0; });
+    tileLayer.on('tileload', () => { tileOk++; });
+    tileLayer.on('tileerror', () => { tileFail++; });
+    tileLayer.on('load', () => { if (tileProblem) tileProblem(tileFail >= 3 && tileOk === 0); });
+    // 지도 영역 크기가 바뀌면(안내 표시가 열리거나 화면 회전 등) 타일·경로선을 다시 맞춤
+    if (window.ResizeObserver) new ResizeObserver(() => map.invalidateSize({ pan: false })).observe(container);
     stallRenderer = L.canvas({ padding: 0.2 });
 
     ['lots', 'walk', 'stalls', 'labels', 'nodes', 'route', 'chev', 'active', 'marks'].forEach((k) => { layers[k] = L.layerGroup().addTo(map); });
@@ -443,10 +453,14 @@ const MapView = (() => {
     map.setView(LL(Router.stalls[carStallId].center), 20);
   }
   function invalidate() { if (map) map.invalidateSize(); }
+  function onTileProblem(cb) { tileProblem = cb; }
+  function retryTiles() { if (tileLayer) tileLayer.redraw(); }
+  // 지도를 이 위치로 바로 옮김 (실시간 안내 시작 때 첫 화면부터 움직임이 보이게)
+  function jumpTo(pos, zoom = 19) { if (map && pos) map.setView(LL(pos), Math.max(map.getZoom(), zoom), { animate: false }); }
 
   return {
     init, showRoute, setActiveStep, setPosition, followPosition, setOccupied, clearRoute, zoomBy, fitAll, focusCar, invalidate,
-    setProgress, setLive, pickStall, endPick, showPicked,
+    setProgress, setLive, pickStall, endPick, showPicked, onTileProblem, retryTiles, jumpTo,
     get routeLength() { return geom ? geom.total : 0; },
     debug: () => ({ activeLatLngs, zoom: map.getZoom(), progress, chevrons: layers.chev.getLayers().length, follow, live }),
   };

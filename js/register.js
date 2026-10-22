@@ -112,7 +112,8 @@ const Register = (() => {
     consent.addEventListener('click', () => consent.setAttribute('aria-pressed', String(consent.getAttribute('aria-pressed') !== 'true')));
     root.querySelector('#reg-form').addEventListener('submit', (e) => { e.preventDefault(); submit(); });
     if (form.stallId) checkStall(true);
-    (fromQr ? root.querySelector('#reg-plate') : root.querySelector('#reg-title')).focus();
+    // 화면 이동(부드러운 스크롤)은 app.js 가 맡음 → 포커스만 옮기고 화면은 튀지 않게
+    (fromQr ? root.querySelector('#reg-plate') : root.querySelector('#reg-title')).focus({ preventScroll: true });
   }
 
   // 칸 번호 확인 + 지도에 표시

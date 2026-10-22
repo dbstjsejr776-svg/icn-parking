@@ -60,6 +60,103 @@ function formatPlate(p) {
   return p.replace(/^(\d{2,3}[가-힣])(\d{4})$/, '$1 $2');
 }
 
+/* ---------- 공항 문의 ---------- */
+// 번호 출처: 인천공항 공식 홈페이지 「대표번호안내/신고」 (https://www.airport.kr/ap_ko/1014/subview.do)
+//   대표번호 1577-2600, 상담사 연결 07:00~22:00 — 제1여객터미널(T1) 전용 번호는 따로 없어 대표번호로 연결
+const AIRPORT_CONTACT = {
+  tel: '1577-2600',
+  hours: '상담사 연결 07:00~22:00',
+  url: 'https://www.airport.kr/ap_ko/1014/subview.do',
+};
+function contactHtml() {
+  const C = AIRPORT_CONTACT;
+  return `
+    <div class="contact">
+      <a class="btn btn-outline contact-btn" href="tel:${C.tel}">${icon('phone')}<span>공항 문의하기 <small>${C.tel}</small></span></a>
+      <p class="muted">인천국제공항 대표번호 (제1여객터미널 T1 문의 포함) · ${C.hours} · <a href="${C.url}" target="_blank" rel="noopener">공식 안내 페이지</a></p>
+    </div>`;
+}
+
+/* ---------- 상황별 오류 안내 (다시 시도 / 도움말 보기) ---------- */
+const ERRORS = {
+  permission: {
+    title: '위치 권한이 꺼져 있어요',
+    text: '내 위치로 안내하려면 이 사이트의 위치 사용을 허용해 주세요.',
+    help: ['주소창 왼쪽 자물쇠(또는 ⓘ) 아이콘 → 「위치」 → 「허용」을 고르세요.', '휴대폰 설정에서 위치(GPS)가 켜져 있는지 확인하세요.', '허용한 뒤 「다시 시도」를 누르세요. 위치 없이도 「지금 계신 곳」에서 출입문을 골라 안내받을 수 있어요.'],
+  },
+  gps: {
+    title: '현재 위치를 찾지 못했어요',
+    text: 'GPS 신호가 약하거나 응답이 없어요. 하늘이 보이는 곳으로 이동한 뒤 다시 시도해 주세요.',
+    help: ['실내·지붕 아래·건물 사이에서는 위치가 잘 잡히지 않아요.', '휴대폰 위치(GPS)와 「정확한 위치」 설정이 켜져 있는지 확인하세요.', '그래도 안 되면 「지금 계신 곳」에서 가까운 출입문을 직접 고르세요.'],
+  },
+  nogps: {
+    title: '이 브라우저에서는 위치 기능을 쓸 수 없어요',
+    text: '위치 기능은 https 주소의 최신 브라우저(크롬·사파리·삼성 인터넷)에서 동작해요.',
+    help: ['휴대폰 기본 브라우저로 다시 열어 보세요.', '위치 없이도 「지금 계신 곳」에서 출입문을 골라 안내받을 수 있어요.'],
+    noRetry: true,
+  },
+  route: {
+    title: '경로를 찾지 못했어요',
+    text: '지금 조건으로는 차량까지 가는 길을 계산하지 못했어요.',
+    help: ['「어떤 길로 갈까요?」에서 다른 길 옵션을 골라 보세요.', '「지금 계신 곳」을 바꾸거나 「잘 모르겠어요」를 골라 보세요.', '셔틀·열차 운행 시간이 아니면 걸어서 가는 길만 찾아요.'],
+  },
+  map: {
+    title: '지도를 불러오지 못했어요',
+    text: '인터넷 연결이 약하거나 지도 서버가 응답하지 않아요. 아래 단계별 안내 문장은 그대로 쓸 수 있어요.',
+    help: ['와이파이·모바일 데이터 연결을 확인하세요.', '「다시 시도」를 눌러도 안 되면 잠시 뒤 페이지를 새로 고쳐 주세요.'],
+  },
+  vehicle: {
+    title: '차량 위치 정보가 없어요',
+    text: '이 차량(또는 주차칸 번호)의 주차 위치를 확인할 수 없어요.',
+    help: ['주차칸 번호를 다시 확인하세요. 예: P1-O-069 (주차장-구역-칸 번호)', '칸 기둥이나 바닥의 표지판, 주차권 메모에서 번호를 찾을 수 있어요.', '그래도 찾지 못하면 공항에 문의해 주세요.'],
+    retryLabel: '다시 찾기',
+  },
+};
+function errorHtml(kind) {
+  const E = ERRORS[kind];
+  return `
+    <div class="error-box" role="alert" data-error="${kind}">
+      <p class="error-title">${icon('alert')}<span>${escapeHtml(E.title)}</span></p>
+      <p>${escapeHtml(E.text)}</p>
+      <div class="btn-row">
+        ${E.noRetry ? '' : `<button type="button" class="btn btn-primary" data-err-retry>${icon('refresh')}<span>${escapeHtml(E.retryLabel || '다시 시도')}</span></button>`}
+        <button type="button" class="btn btn-secondary" data-err-help aria-expanded="false">${icon('alert')}<span>도움말 보기</span></button>
+      </div>
+      <div class="error-help" hidden>
+        <ul class="plain-list">${E.help.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
+        ${contactHtml()}
+      </div>
+    </div>`;
+}
+// 오류 안내를 container 에 그리고 버튼 연결
+function showError(container, kind, onRetry) {
+  if (!container) return;
+  container.hidden = false;
+  container.innerHTML = errorHtml(kind);
+  const retry = container.querySelector('[data-err-retry]');
+  if (retry) retry.addEventListener('click', onRetry);
+  const help = container.querySelector('[data-err-help]');
+  help.addEventListener('click', () => {
+    const box = container.querySelector('.error-help');
+    box.hidden = !box.hidden;
+    help.setAttribute('aria-expanded', String(!box.hidden));
+  });
+}
+
+// (reduceMotion() 은 map.js 에 있음)
+// el 이 화면 위쪽에 오도록 부드럽게 스크롤 (위에 고정된 머리글·지도가 있으면 그 높이만큼 띄움)
+function scrollToEl(el) {
+  if (!el) return;
+  const e = el.getBoundingClientRect();
+  let off = 8;
+  document.querySelectorAll('.site-header, .map-card').forEach((x) => {
+    if (x.contains(el) || el.contains(x) || !/sticky|fixed/.test(getComputedStyle(x).position)) return;
+    const r = x.getBoundingClientRect();
+    if (r.right > e.left && r.left < e.right && r.top <= 1) off += r.height;
+  });
+  window.scrollTo({ top: Math.max(0, e.top + window.scrollY - off), behavior: reduceMotion() ? 'auto' : 'smooth' });
+}
+
 /* ---------- 앱 ---------- */
 const App = (() => {
   const FONT_KEY = 'smartcar-font-size';
@@ -76,6 +173,11 @@ const App = (() => {
     manual: null,          // 수동 위치 공급자
     live: null,            // 실시간 안내 방식: 'gps' | 'sim' | null
     lastReroute: 0,
+    offCount: 0,           // 경로에서 연속으로 벗어난 횟수 (GPS 오차로 인한 잦은 재탐색 방지)
+    rerouting: false,      // 재탐색 중
+    rerouteFailed: false,
+    navAlong: null,        // 경로 위 지금까지 온 거리(m). null = 아직 위치 모름
+    moveState: '',         // 이동 상태 문구
     qrDoorId: null,        // 출입문 QR로 들어온 경우 그 출입문
   };
 
@@ -106,8 +208,9 @@ const App = (() => {
     setupDevice();
     setupFontSize();
     setupClock();
-    setupTabs();
     setupMapTools();
+    const fc = $('#footer-contact');
+    if (fc) fc.innerHTML = contactHtml();
 
     try {
       const [parking, vehicles] = await Promise.all([loadJson('data/parking.json'), loadJson('data/vehicles.json')]);
@@ -120,7 +223,7 @@ const App = (() => {
 
     $('#data-note').textContent = `※ ${state.parking._note} · ${state.vehicles._note}`;
     Router.build(state.parking);
-    MapView.init($('#map'), state.parking);
+    setupMap();
     refreshOccupied();
     state.manual = ManualLocationProvider(Router.nodes);
     LocationService.subscribe(onLocation);
@@ -148,7 +251,33 @@ const App = (() => {
     else if (findStall) {
       onStallChosen(findStall);
       if (q.get('gps') === '1') setTimeout(() => toggleLive('gps'), 300);
-    } else Verify.renderSearch();
+    } else if (q.get('find')) showVehicleError();   // 주소의 주차칸 번호가 잘못됨
+    else Verify.renderSearch();
+  }
+
+  /* ---------- 지도 준비 (로딩 실패 안내 포함) ---------- */
+  function setupMap() {
+    const box = $('#map-error');
+    if (typeof L === 'undefined') {
+      // 지도 프로그램(Leaflet)을 받지 못함 → 지도 기능은 끄고 안내 문장만으로 사용
+      Object.keys(MapView).forEach((k) => { if (typeof MapView[k] === 'function') MapView[k] = () => {}; });
+      showError(box, 'map', () => location.reload());
+      return;
+    }
+    MapView.init($('#map'), state.parking);
+    MapView.onTileProblem((failed) => {
+      if (failed) showError(box, 'map', () => { box.hidden = true; MapView.retryTiles(); });
+      else box.hidden = true;
+    });
+  }
+
+  // 차량 위치 정보 없음
+  function showVehicleError() {
+    stopLive();
+    setStage(1);
+    const c = $('#stage-content');
+    c.innerHTML = '<h2 class="title-lg" id="veh-err-title" tabindex="-1">내 차 찾기</h2><div id="veh-err"></div>';
+    showError($('#veh-err'), 'vehicle', () => restart());
   }
 
   // 지도에 "다른 차가 있는 칸" 표시 (가상 차량 + 이 기기에 등록한 차량) + 「내 등록 차량」 갱신
@@ -182,7 +311,8 @@ const App = (() => {
             </span>`}
         </li>`).join('')}</ul>` : '<p class="muted">아직 등록한 차가 없어요. 주차한 뒤 등록해 두면 돌아올 때 바로 찾을 수 있어요.</p>'}`;
 
-    bar.querySelector('#bar-register').addEventListener('click', () => showRegister(null));
+    // 「+ 내 차 등록」 → 아래 「내 차 찾기」 카드에 등록 화면을 열고 그곳으로 부드럽게 이동
+    bar.querySelector('#bar-register').addEventListener('click', () => showRegister(null, true));
     bar.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => {
       const v = list.find((x) => x.id === b.dataset.go);
       if (v) onVehicleConfirmed(v);
@@ -228,9 +358,10 @@ const App = (() => {
   }
 
   /* ---------- 내 차 등록 ---------- */
-  function showRegister(stallId) {
+  function showRegister(stallId, scroll = false) {
     stopLive();
     setStage(1);
+    if (scroll) requestAnimationFrame(() => scrollToEl($('#stage-content')));
     Register.render($('#stage-content'), state.vehicles, {
       stallId,
       onCancel: () => Verify.renderSearch(),
@@ -245,7 +376,8 @@ const App = (() => {
 
   // 주차칸 번호로 바로 찾기 (차량 번호 없이)
   function onStallChosen(stallId) {
-    onVehicleConfirmed({ id: 'stall-' + stallId, plateFull: null, entryTime: null, location: { lot: Router.stalls[stallId].lot, stallId } });
+    const s = Router.stalls[stallId];
+    onVehicleConfirmed({ id: 'stall-' + stallId, plateFull: null, entryTime: null, location: { lot: s ? s.lot : null, stallId } });
   }
 
   async function loadJson(url) {
@@ -298,29 +430,6 @@ const App = (() => {
     setInterval(tick, 15000);
   }
 
-  /* ---------- 사용자 / 관리자 탭 ---------- */
-  function setupTabs() {
-    const tabs = [...document.querySelectorAll('[role="tab"]')];
-    const select = (tab) => {
-      tabs.forEach((t) => {
-        const on = t === tab;
-        t.setAttribute('aria-selected', String(on));
-        t.tabIndex = on ? 0 : -1;
-        document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
-        if (on && t.id === 'tab-user') setTimeout(() => MapView.invalidate(), 0);   // 숨겨졌던 지도 크기 다시 계산
-      });
-    };
-    tabs.forEach((t, i) => {
-      t.addEventListener('click', () => select(t));
-      t.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
-        select(next);
-        next.focus();
-      });
-    });
-  }
-
   /* ---------- 지도 도구 버튼 ---------- */
   function setupMapTools() {
     $('#zoom-in').addEventListener('click', () => MapView.zoomBy(1 / 1.25));
@@ -344,6 +453,8 @@ const App = (() => {
 
   /* ---------- ③ 경로 안내 ---------- */
   function onVehicleConfirmed(v) {
+    // 차량 위치 정보 없음 (등록 정보가 깨졌거나 없는 주차칸 번호)
+    if (!v || !v.location || !Router.stalls[v.location.stallId]) { showVehicleError(); return; }
     state.vehicle = v;
     state.currentDoorId = state.qrDoorId;   // 출입문 QR로 들어왔으면 그 출입문에서 출발
     LocationService.use(state.manual);
@@ -355,55 +466,62 @@ const App = (() => {
     const v = state.vehicle;
     const presets = ROUTE_CONFIG.presets;
     const presetIcon = { fastest: 'bolt', safest: 'shield', accessible: 'accessible' };
+    const doorName = (id) => { const d = id && Router.nodes[id]; return d ? `${Router.floorArea(d.floor)} ${d.doorNumber}번 출입문` : '선택 안 함'; };
+    // 순서: 내 차 → 길 옵션 → 추천 → 실시간 안내 버튼 → 단계 안내 → (접힘) 현재 위치·운행 정보 → 문의
     $('#stage-content').innerHTML = `
-      <h2 class="title-lg" id="route-title" tabindex="-1">경로 안내</h2>
-      <div class="vehicle-summary">
-        <p class="eyebrow">${v.plateFull ? '확인된 내 차' : '주차칸 번호로 찾기'}</p>
-        ${v.plateFull ? `<p class="plate-big">${escapeHtml(formatPlate(v.plateFull))}</p>` : ''}
-        <p>${icon('pin')}<span>${escapeHtml(Router.stallPlace(v.location.stallId))}</span></p>
+      <div class="route-head">
+        <h2 class="title-lg" id="route-title" tabindex="-1">경로 안내</h2>
+        <p class="vehicle-line">${icon('pin')}<span>${v.plateFull ? `<strong>${escapeHtml(formatPlate(v.plateFull))}</strong> · ` : ''}${escapeHtml(Router.stallPlace(v.location.stallId))}</span></p>
       </div>
 
       <fieldset class="filter-group">
         <legend>어떤 길로 갈까요?</legend>
         <div class="preset-grid">
           ${Object.keys(presets).map((k) => `
-            <button type="button" class="preset" data-preset="${k}" aria-pressed="${state.preset === k}">
-              ${icon(presetIcon[k], 32)}<span class="preset-label">${presets[k].label}</span>
-              <small>${presets[k].description}</small>
+            <button type="button" class="preset" data-preset="${k}" aria-pressed="${state.preset === k}" title="${escapeHtml(presets[k].description)}">
+              ${icon(presetIcon[k], 22)}<span class="preset-label">${presets[k].label}</span>
             </button>`).join('')}
         </div>
+        <p class="muted" id="preset-desc">${escapeHtml(presets[state.preset].description)}</p>
       </fieldset>
 
-      <fieldset class="filter-group">
-        <legend>지금 계신 곳 <small>(선택하면 실내 이동도 안내해요)</small></legend>
+      <section id="recommend" aria-live="polite" aria-label="추천 출입문"></section>
+
+      <div class="live-row">
+        <div class="btn-row">
+          ${window.__ARTIFACT
+            ? (window.__GPS_URL ? `<a class="btn btn-primary" id="gps-link" target="_blank" rel="noopener" href="${escapeHtml(window.__GPS_URL)}">${icon('location')}<span>내 위치(GPS)로 안내</span></a>` : '')
+            : `<button type="button" class="btn btn-primary" id="gps-btn" aria-pressed="false">${icon('location')}<span>내 위치(GPS)로 안내</span></button>`}
+          <button type="button" class="btn btn-outline" id="live-btn" aria-pressed="false">${icon('play')}<span>실시간 이동 시연</span></button>
+        </div>
+        <div id="live-status" hidden aria-live="polite"></div>
+      </div>
+
+      <section id="guide" aria-label="단계별 안내"></section>
+
+      <details class="more-box" id="loc-box">
+        <summary>${icon('location')}<span>지금 계신 곳: <strong id="loc-current">${escapeHtml(doorName(state.currentDoorId))}</strong> <small>(고르면 실내 이동도 안내)</small></span></summary>
         <div id="loc-picker"></div>
-      </fieldset>
+      </details>
 
-      <details class="transit-box" open>
+      <details class="more-box transit-box">
         <summary>${icon('bus')}<span>셔틀버스·자기부상열차 운행 정보</span></summary>
         <ul class="transit-status" id="transit-status"></ul>
         <p class="muted">운행 중인 노선만 경로에 넣어요. 기다리는 시간은 배차 간격의 절반으로 계산해요.</p>
       </details>
 
-      <section id="recommend" aria-live="polite" aria-label="추천 출입문"></section>
-      <section id="guide" aria-label="단계별 안내"></section>
-
-      <p id="live-status" class="notice" hidden aria-live="polite"></p>
-      <div class="btn-row">
-        ${window.__ARTIFACT
-          ? (window.__GPS_URL ? `<a class="btn btn-primary" id="gps-link" target="_blank" rel="noopener" href="${escapeHtml(window.__GPS_URL)}">${icon('location')}<span>내 위치(GPS)로 안내</span></a>` : '')
-          : `<button type="button" class="btn btn-primary" id="gps-btn" aria-pressed="false">${icon('location')}<span>내 위치(GPS)로 안내</span></button>`}
-        <button type="button" class="btn btn-outline" id="live-btn" aria-pressed="false">${icon('play')}<span>실시간 이동 시연</span></button>
-      </div>
+      ${contactHtml()}
       <button type="button" class="btn btn-secondary btn-block" id="other-car">${icon('search')}<span>다른 차 찾기</span></button>`;
 
     document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
       state.preset = b.dataset.preset;
       document.querySelectorAll('[data-preset]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      $('#preset-desc').textContent = presets[state.preset].description;
       updateRoute();
     }));
     LocationPicker.render($('#loc-picker'), state.parking, state.currentDoorId, (doorId) => {
       state.currentDoorId = doorId;
+      $('#loc-current').textContent = doorName(doorId);
       updateRoute();
       if (doorId) state.manual.select(doorId);
     });
@@ -412,18 +530,23 @@ const App = (() => {
     $('#other-car').addEventListener('click', restart);
 
     updateRoute();
-    $('#route-title').focus();
+    $('#route-title').focus({ preventScroll: true });
+    // 화면 맨 위(모바일: 고정된 지도)부터 보이게
+    scrollToEl(document.querySelector('.layout'));
   }
 
   // 옵션·현재 위치가 바뀔 때마다 경로 다시 계산
   function updateRoute() {
     stopLive();
-    const r = Router.recommend({
-      targetStallId: state.vehicle.location.stallId,
-      preset: state.preset,
-      currentDoorId: state.currentDoorId,
-      now: routeNow(),
-    });
+    let r = null;
+    try {
+      r = Router.recommend({
+        targetStallId: state.vehicle.location.stallId,
+        preset: state.preset,
+        currentDoorId: state.currentDoorId,
+        now: routeNow(),
+      });
+    } catch (e) { console.warn('[app] 경로 계산 오류', e); }
     // 공유 링크(claude.ai)에서는 GPS 가 막혀 있어, 같은 칸·출발 출입문·옵션으로 GPS 버전을 열어 줌
     const gl = $('#gps-link');
     if (gl) {
@@ -440,12 +563,27 @@ const App = (() => {
   function renderRoute(r, fromPosition = false) {
     state.route = r;
     if (!r) {
-      $('#recommend').innerHTML = `<p class="notice notice-warn">${icon('alert')}<span>경로를 찾지 못했어요. 고객센터에 문의해 주세요.</span></p>`;
+      MapView.clearRoute();
+      $('#guide').innerHTML = '';
+      showError($('#recommend'), 'route', () => updateRoute());
       return;
     }
     state.segToStep = [];
     // 지도 좌표 구간 → 단계 번호 (셔틀 구간은 실제 도로 모양이라 좌표가 많음)
     r.steps.forEach((s, i) => { for (let k = 1; k < s.points.length; k++) state.segToStep.push(i); });
+    // 경로를 따라 잰 거리(m): 전체, 단계별 시작 위치·길이 (남은 거리·시간 계산용)
+    const pts = r.points;
+    state.stepStart = r.steps.map(() => null);
+    state.stepLen = r.steps.map(() => 0);
+    let cum = 0;
+    for (let k = 0; k < pts.length - 1; k++) {
+      const i = state.segToStep[k] ?? r.steps.length - 1;
+      const len = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+      if (state.stepStart[i] === null) state.stepStart[i] = cum;
+      state.stepLen[i] += len;
+      cum += len;
+    }
+    state.routeLen = cum;
 
     if (fromPosition) {
       $('#recommend').innerHTML = `
@@ -462,24 +600,6 @@ const App = (() => {
       return;
     }
     const alt = r.alternatives.map((a) => `${escapeHtml(a.label)} (약 ${a.distance}m)`).join(', ');
-
-    // 세 가지 옵션 비교 (같은 길이면 "빠르면서 안전한 길"임을 알려줌)
-    const rows = Router.compareOptions({ targetStallId: state.vehicle.location.stallId, currentDoorId: state.currentDoorId, now: routeNow() });
-    const label = (k) => ROUTE_CONFIG.presets[k].label;
-    const me = rows.find((x) => x.preset === r.preset);
-    const twins = rows.filter((x) => x.preset !== r.preset && x.path === me.path).map((x) => label(x.preset));
-    const compareHtml = `
-      <div class="compare">
-        <p class="compare-title">길 옵션 비교</p>
-        <ul class="compare-list">
-          ${rows.map((x) => `
-            <li class="${x.preset === r.preset ? 'is-current' : ''}" ${x.preset === r.preset ? 'aria-current="true"' : ''}>
-              <span class="compare-name">${escapeHtml(x.label)}${x.preset === r.preset ? ' <small>(선택)</small>' : ''}</span>
-              <span class="compare-detail">${escapeHtml(x.door)} · 걷기 약 ${x.distance}m · ${x.minutes}분${x.transit.length ? ` · ${escapeHtml(x.transit.join('+'))} 이용` : ''} · 차도·통로 ${x.laneMeters}m${x.stairs ? ' · 계단 있음' : ''}</span>
-            </li>`).join('')}
-        </ul>
-        ${twins.length ? `<p class="compare-note">${icon('check')}<span>이 차량은 「${escapeHtml(twins.join('」·「'))}」과 같은 길이에요. 빠르면서 안전한 길입니다.</span></p>` : ''}
-      </div>`;
     $('#recommend').innerHTML = `
       <div class="recommend-card">
         <p class="eyebrow">추천 출입문 · ${escapeHtml(ROUTE_CONFIG.presets[r.preset].label)}</p>
@@ -493,7 +613,6 @@ const App = (() => {
         </ul>
         ${r.warnings.map((w) => `<p class="notice notice-warn">${icon('alert')}<span>${escapeHtml(w)}</span></p>`).join('')}
         <p class="safety ${r.safety.ok ? 'ok' : 'bad'}">${icon(r.safety.ok ? 'check' : 'alert')}<span>${r.safety.ok ? '인도·횡단보도·주차장 통로로만 가고, 다른 주차칸을 가로지르지 않아요' : '안전 점검 필요: ' + escapeHtml(r.safety.problems.join(', '))}</span></p>
-        ${compareHtml}
         ${alt ? `<p class="muted">다른 출입문: ${alt}</p>` : ''}
       </div>`;
 
@@ -506,8 +625,11 @@ const App = (() => {
     gps: { btn: '#gps-btn', on: '안내 멈추기', off: '내 위치(GPS)로 안내', icon: 'location' },
     sim: { btn: '#live-btn', on: '시연 멈추기', off: '실시간 이동 시연', icon: 'play' },
   };
-  const OFF_ROUTE_M = 30;          // 경로에서 이만큼 벗어나면 다시 찾기
-  const REROUTE_COOLDOWN_MS = 10000;
+  // 경로 이탈 → 자동 재탐색 기준 (GPS 오차로 너무 자주 다시 찾지 않도록)
+  const OFF_ROUTE_M = 25;          // 경로에서 이만큼(+GPS 정확도 일부) 벗어나면 "이탈"
+  const OFF_COUNT_NEEDED = 3;      // 이탈이 연속 3번 확인돼야 재탐색
+  const MAX_ACCURACY_M = 50;       // 정확도가 이보다 나쁜 위치는 이탈 판단에 쓰지 않음
+  const REROUTE_COOLDOWN_MS = 15000;   // 재탐색 후 최소 15초는 다시 찾지 않음
 
   function liveStatus(text, warn = false) {
     const el = $('#live-status');
@@ -516,37 +638,59 @@ const App = (() => {
     el.className = 'notice' + (warn ? ' notice-warn' : '');
     el.textContent = text || '';
   }
+  function liveError(kind, onRetry) {
+    const el = $('#live-status');
+    if (!el) return;
+    el.className = '';
+    showError(el, kind, onRetry);
+  }
 
   function toggleLive(mode) {
     if (state.live === mode) { stopLive(); return; }
     stopLive();
+    if (!state.route) return;
     state.lastPos = null;
+    state.offCount = 0;
+    state.rerouting = false;
+    state.rerouteFailed = false;
+    state.navAlong = null;
+    state.lastMove = null;
+    state.moveState = '';
     if (mode === 'gps') {
       const gps = GpsLocationProvider((err) => {
-        liveStatus(err.code === 1 ? '위치 권한이 꺼져 있어요. 브라우저 설정에서 위치 사용을 허용해 주세요.' : '위치를 찾지 못했어요. 하늘이 보이는 곳에서 다시 시도해 주세요.', true);
+        // 1 = 권한 거부, 2 = 위치 못 찾음, 3 = 시간 초과
         stopLive(false);
+        liveError(err.code === 1 ? 'permission' : 'gps', () => toggleLive('gps'));
       });
-      if (!gps.isAvailable()) { liveStatus('이 브라우저는 위치 기능을 지원하지 않아요. 「실시간 이동 시연」을 이용해 주세요.', true); return; }
-      liveStatus('내 위치를 찾고 있어요… (https 주소에서만 동작해요)');
+      if (!gps.isAvailable()) { liveError('nogps'); return; }
+      liveStatus('내 위치를 찾고 있어요… 위치 권한을 물으면 「허용」을 눌러 주세요.');
       state.lastReroute = 0;
       LocationService.use(gps);
     } else {
-      liveStatus('경로를 따라 이동하는 모습을 보여드려요 (시연).');
+      liveStatus('시연 모드: 실제 위치가 아니라, 경로를 따라 가상으로 움직여요.');
       // 실제 거리(수백 m)를 40초 정도에 보여주도록 배속 조절
       LocationService.use(SimulatedLocationProvider(state.route.points, { speedup: Math.max(6, state.route.totalDistance / 45) }));
+      state.navAlong = 0;
+      MapView.jumpTo(state.route.points[0]);   // 시작점으로 바로 이동 → 첫 화면부터 움직임이 보임
     }
     state.live = mode;
+    document.body.dataset.live = mode;
     MapView.setLive(true);
     navHud(true);
     const b = $(LIVE[mode].btn);
     b.setAttribute('aria-pressed', 'true');
     b.innerHTML = `${icon('stop')}<span>${LIVE[mode].on}</span>`;
+    // 모바일: 지도와 안내 표시가 화면 맨 위에 보이게
+    if (document.documentElement.dataset.device === 'mobile') scrollToEl(document.querySelector('.layout'));
+    setTimeout(() => MapView.invalidate(), 50);
   }
 
   function stopLive(clearStatus = true) {
     if (!state.live) return;
     const mode = state.live;
     state.live = null;
+    state.rerouting = false;
+    delete document.body.dataset.live;
     LocationService.use(state.manual);
     MapView.setLive(false);
     navHud(false);
@@ -583,23 +727,102 @@ const App = (() => {
     const el = $('#nav-hud');
     if (!el) return;
     el.hidden = !show;
-    if (show) updateNav(0);
+    if (show) updateNav();
   }
-  function updateNav(along) {
+
+  // 지금 단계의 이동 상태 문구
+  const MOVE_TEXT = {
+    transit: '셔틀·열차로 이동 중', exit: '터미널 출입문으로 이동 중', indoor: '터미널 안 걷는 중',
+    elevator: '엘리베이터로 층 이동 중', escalator: '에스컬레이터로 층 이동 중', stairs: '계단으로 층 이동 중',
+    crosswalk: '횡단보도 건너는 중', aisle: '주차장 통로 걷는 중 (차량 주의)', arrive: '내 차 바로 앞',
+  };
+
+  /**
+   * 남은 거리·예상 시간 (경로를 따라 계산)
+   *  - 남은 거리: 경로선을 따라 지금 위치(along)부터 내 차까지 (셔틀 구간 포함)
+   *  - 남은 시간: 경로 엔진의 단계별 예상 시간(걷기 속도·대기·탑승)으로 계산 — 임의의 속도를 쓰지 않음
+   */
+  function navNumbers(along) {
+    const r = state.route;
+    const total = state.routeLen || 0;
+    const a = Math.max(0, Math.min(total, along));
+    let cur = r.steps.length - 1;
+    for (let i = 0; i < r.steps.length; i++) {
+      if (state.stepStart[i] === null) continue;
+      if (a < state.stepStart[i] + state.stepLen[i]) { cur = i; break; }
+    }
+    let sec = 0;
+    r.steps.forEach((s, i) => {
+      const full = Router.stepSeconds(s, r.preset);
+      if (i > cur) sec += full;
+      else if (i === cur) {
+        const len = state.stepLen[i];
+        const done = len > 0 ? Math.max(0, Math.min(1, (a - state.stepStart[i]) / len)) : 0;
+        sec += full * (1 - done);
+      }
+    });
+    return { left: Math.round(total - a), walked: Math.round(a), frac: total ? a / total : 0, sec, step: cur };
+  }
+
+  function updateNav(along = state.navAlong) {
     const el = $('#nav-hud');
     if (!el || el.hidden || !state.route) return;
-    const geomTotal = MapView.routeLength || 1;
-    const frac = Math.max(0, Math.min(1, along / geomTotal));
-    const walked = Math.round(state.route.totalDistance * frac);
-    const left = Math.max(0, state.route.totalDistance - walked);
-    const secLeft = Math.max(0, state.route.estimatedSeconds * (1 - frac));
-    const step = state.route.steps[StepGuide.index] || state.route.steps[0];
+    if (along !== null && along !== undefined) state.navAlong = along;
+    const known = state.navAlong !== null && state.navAlong !== undefined;
+    const sim = state.live === 'sim';
+    const n = known ? navNumbers(state.navAlong) : null;
+    const stepIdx = StepGuide.index ?? 0;
+    const step = state.route.steps[stepIdx] || state.route.steps[0];
+    let moving = state.moveState || (known ? (n.left <= 15 ? '거의 도착했어요' : MOVE_TEXT[step.kind] || '걸어서 이동 중') : '현재 위치 찾는 중…');
+    if (state.rerouting) moving = '경로 재탐색 중…';
+    else if (state.rerouteFailed) moving = '재탐색 실패 — 아래 「다시 시도」';
+    const mins = n ? (n.left <= 0 ? 0 : Math.max(1, Math.ceil(n.sec / 60))) : null;
+    el.classList.toggle('is-sim', sim);
     el.innerHTML = `
-      <p class="nav-step">${icon('arrowRight')}<span>${escapeHtml(step.text)}</span></p>
-      <div class="nav-progress" role="progressbar" aria-label="이동 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(frac * 100)}">
-        <span style="width:${(frac * 100).toFixed(1)}%"></span>
+      <div class="nav-top">
+        <span class="mode-badge ${sim ? 'sim' : 'gps'}">${sim ? '시연 모드 · 가상 위치' : '실제 GPS'}</span>
+        <span class="nav-state ${state.rerouting ? 'busy' : ''}">${state.rerouting ? '<span class="spinner" aria-hidden="true"></span>' : ''}${escapeHtml(moving)}</span>
       </div>
-      <p class="nav-meta"><span>지금까지 <strong>${walked}m</strong></span><span>남은 거리 <strong>${left}m</strong> · 약 ${Math.max(left > 0 ? 1 : 0, Math.ceil(secLeft / 60))}분</span></p>`;
+      <p class="nav-big">${n
+        ? `<strong>${n.left >= 1000 ? (n.left / 1000).toFixed(1) + 'km' : n.left + 'm'}</strong> 남음 <span class="sep">/</span> <strong>약 ${mins}분</strong>`
+        : '<strong>—</strong> <small>위치를 받으면 남은 거리·시간을 보여드려요</small>'}</p>
+      <p class="nav-step">${icon('arrowRight')}<span>${escapeHtml(step.text)}</span></p>
+      <div class="nav-progress" role="progressbar" aria-label="이동 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${n ? Math.round(n.frac * 100) : 0}">
+        <span style="width:${n ? (n.frac * 100).toFixed(1) : 0}%"></span>
+      </div>
+      <p class="nav-meta">${n ? `지금까지 ${n.walked}m · ` : ''}경로를 따라 계산${sim ? ' · 시연용 수치' : ''}</p>`;
+  }
+
+  // 현재 위치에서 차량까지 다시 찾기 (진행 표시 → 결과 / 실패 시 다시 시도)
+  function reroute(pos, offM) {
+    if (!state.live || !pos) return;
+    state.rerouting = true;
+    state.rerouteFailed = false;
+    state.lastReroute = Date.now();
+    state.offCount = 0;
+    updateNav();
+    liveStatus('경로에서 벗어났어요. 현재 위치에서 차량까지 길을 다시 찾는 중이에요…', true);
+    setTimeout(() => {
+      if (!state.live) return;
+      let r2 = null;
+      try {
+        r2 = Router.recommendFromPoint({ targetStallId: state.vehicle.location.stallId, preset: state.preset, point: pos, now: routeNow() });
+      } catch (e) { console.warn('[app] 재탐색 오류', e); }
+      state.rerouting = false;
+      if (!r2) {
+        state.rerouteFailed = true;
+        updateNav();
+        liveError('route', () => { state.lastReroute = 0; reroute(state.lastGps || pos, offM); });
+        return;
+      }
+      state.rerouteCount = (state.rerouteCount || 0) + 1;
+      renderRoute(r2, true);
+      MapView.setLive(true);
+      const pr = projectOnRoute(pos);
+      MapView.setProgress(pr.along);
+      updateNav(pr.along);
+      liveStatus(`경로에서 약 ${Math.round(offM)}m 벗어나 현재 위치에서 길을 다시 찾았어요.`);
+    }, 350);
   }
 
   // 위치 공급자에서 위치가 올 때마다
@@ -614,43 +837,55 @@ const App = (() => {
     state.lastPos = { x: pos.x, y: pos.y };
 
     if (pos.source === 'simulated') {
+      if (state.live !== 'sim') return;
       const pr = projectOnRoute(pos);
       const stepIdx = pos.done ? state.route.steps.length - 1 : state.segToStep[pos.segment];
       if (stepIdx !== undefined && stepIdx !== StepGuide.index) StepGuide.go(stepIdx, false);
       MapView.setPosition(pos, null, heading);
       MapView.setProgress(pos.done ? MapView.routeLength : pr.along);
-      updateNav(pos.done ? MapView.routeLength : pr.along);
+      updateNav(pos.done ? state.routeLen : pr.along);
       if (pos.done) liveStatus('시연이 끝났어요. 「도착했어요」를 눌러 주세요.');
       return;
     }
     if (pos.source === 'gps') {
+      if (state.live !== 'gps') return;
+      state.lastGps = pos;
       MapView.setPosition(pos, pos.accuracyM, heading);
       const fromOrigin = Math.hypot(pos.x, pos.y);
       if (fromOrigin > 3000) {
+        state.navAlong = null;
+        state.moveState = '공항 밖 — 도착하면 안내 시작';
+        updateNav();
         liveStatus(`지금 공항에서 약 ${(fromOrigin / 1000).toFixed(1)}km 떨어져 있어요. 공항 주차장에 도착하면 위치를 따라 안내해요. 지금은 「실시간 이동 시연」으로 미리 볼 수 있어요.`, true);
         return;
       }
+      // 잠시 멈춤 감지 (10초 넘게 2m 안에 머묾)
+      const now = pos.timestamp || Date.now();
+      if (!state.lastMove || Math.hypot(pos.x - state.lastMove.x, pos.y - state.lastMove.y) > 2) state.lastMove = { x: pos.x, y: pos.y, t: now };
+      state.moveState = now - state.lastMove.t > 10000 ? '잠시 멈춤' : '';
+
       const pr = projectOnRoute(pos);
-      const tolerance = OFF_ROUTE_M + Math.min(pos.accuracyM || 0, 30);
+      const tolerance = OFF_ROUTE_M + Math.min(pos.accuracyM || 0, 25);
+      const reliable = !pos.accuracyM || pos.accuracyM <= MAX_ACCURACY_M;
       if (pr.off > tolerance) {
-        if (Date.now() - state.lastReroute < REROUTE_COOLDOWN_MS) return;
-        state.lastReroute = Date.now();
-        const r2 = Router.recommendFromPoint({ targetStallId: state.vehicle.location.stallId, preset: state.preset, point: pos, now: routeNow() });
-        if (r2) {
-          renderRoute(r2, true);
-          MapView.setLive(true);
-          updateNav(0);
-          liveStatus(`경로에서 약 ${Math.round(pr.off)}m 벗어나 현재 위치에서 길을 다시 찾았어요.`);
-        }
+        if (reliable) state.offCount++;
+        const cooled = Date.now() - state.lastReroute >= REROUTE_COOLDOWN_MS;
+        if (state.offCount >= OFF_COUNT_NEEDED && cooled && !state.rerouting) { reroute(pos, pr.off); return; }
+        state.moveState = `경로에서 약 ${Math.round(pr.off)}m 벗어남 (확인 중 ${Math.min(state.offCount, OFF_COUNT_NEEDED)}/${OFF_COUNT_NEEDED})`;
+        updateNav();
+        if (!reliable) liveStatus(`위치 정확도가 낮아요 (약 ${Math.round(pos.accuracyM)}m). 신호가 좋아지면 다시 판단해요.`, true);
         return;
       }
+      state.offCount = 0;
+      if (state.rerouting) return;
+      state.rerouteFailed = false;   // 다시 경로 위로 돌아옴
       const stepIdx = state.segToStep[pr.seg];
       if (stepIdx !== undefined && stepIdx !== StepGuide.index) StepGuide.go(stepIdx, false);
       MapView.setProgress(pr.along);
       updateNav(pr.along);
       const end = state.route.points[state.route.points.length - 1];
       const toCar = Math.round(Math.hypot(pos.x - end.x, pos.y - end.y));
-      liveStatus(toCar <= 10 ? '거의 다 왔어요. 주변의 내 차를 확인해 주세요.' : `위치를 따라 안내 중이에요 (정확도 약 ${Math.round(pos.accuracyM || 0)}m).`);
+      if (!state.rerouteFailed) liveStatus(toCar <= 10 ? '거의 다 왔어요. 주변의 내 차를 확인해 주세요.' : `실제 위치를 따라 안내 중이에요 (정확도 약 ${Math.round(pos.accuracyM || 0)}m).`);
       return;
     }
     MapView.setPosition(pos);

@@ -2,7 +2,7 @@
   "_note": "실제 인천공항 T1 현장과 다를 수 있음. 실측 검증 필요",
   "_source": "출입문·연결통로·주차장 외곽선·차도: © OpenStreetMap contributors (ODbL), 2026-10 추출. 교통센터 내부 동선·보행로·횡단보도 위치·실내 수직 이동 수단·차량 입출구는 가정(assumed: true).",
   "meta": {
-    "name": "인천공항 T1 스마트 내차 찾기 - 보행 네트워크",
+    "name": "인천공항 T1 차자주께! - 보행 네트워크",
     "version": "0.3.0",
     "updatedAt": "2026-10-15T09:00:00+09:00",
     "coordinateSystem": "WGS84 위경도. 계산은 origin 기준 미터 좌표(x 동쪽+, y 남쪽+)",
